@@ -10,12 +10,12 @@ const Home: NextPage = () => {
   const [muted, setMuted] = useState(true)
 
   useEffect(() => {
-    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    setMuted(mobile)
+    // const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    // setMuted(mobile)
 
     const ikun = ikunRef.current = new IKun({
       container: containerRef.current!,
-      muted: mobile
+      muted: true
     })
     ikun.run()
 

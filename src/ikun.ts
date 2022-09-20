@@ -1,5 +1,3 @@
-const FRAME = 1000 / 60
-
 const TOUCH_EVENT = 1
 const MOUSE_EVENT = 2
 
@@ -30,7 +28,7 @@ const rotatePoint = (cx: number, cy: number, x: number, y: number, angle: number
 interface IKunOptions {
     container: HTMLElement
     muted?: boolean
-} 
+}
 
 class IKun {
     muted: boolean
@@ -39,6 +37,7 @@ class IKun {
 
     v = {
         r: 12, // 角度
+        x: 0,
         y: 2, // 高度
         t: 0, // 垂直速度
         w: 0, // 横向速度
@@ -68,6 +67,29 @@ class IKun {
 
     height = 800
     width = 500
+
+    // 椭圆方程
+    a = this.height / 2
+    b = this.width / 2
+
+    // 坤坤的平衡点
+    // xc: number
+    // yc: number
+    
+    // 触摸开始时坤坤的位置
+    x0 = 0
+    y0 = 0
+    
+    // 坤坤当前的位置
+    x = 0
+    y = 0
+
+    // 弹簧动画
+    mass = 1
+    stiffness = 0.0006
+    damping = 0.001
+    velocity = 0
+    time = Date.now()
 
     constructor({container, muted = false}: IKunOptions) {
         this.muted = muted
@@ -160,12 +182,8 @@ class IKun {
         const touch = 'targetTouches' in event ? event.touches[0] : event
         this.pageX = touch.pageX
         this.pageY = touch.pageY
-
-        // 确保通过用户触发事件获得音频播放授权
-        const {transient, dancing, crazy} = this.audio
-        transient.muted = this.muted
-        dancing.muted = this.muted
-        crazy.muted = this.muted
+        this.x0 = this.x
+        this.y0 = this.y
     }
 
     move = (event: TouchEvent | MouseEvent) => {
@@ -173,28 +191,22 @@ class IKun {
             return
         }
 
-        const touch = 'targetTouches' in event ? event.touches[0] : event
-        const rect = this.image.getBoundingClientRect()
-        const leftCenter = rect.left + rect.width / 2
-        const { pageX, pageY } = touch
+        const { pageX, pageY } = 'targetTouches' in event ? event.touches[0] : event
 
-        const x = pageX - leftCenter
-        let y = pageY - this.pageY
-       
-        let r = x * this.sticky
+        const deltaX = pageX - this.pageX
+        const deltaY = pageY - this.pageY
 
-        r = Math.max(-this.maxR, r)
-        r = Math.min(this.maxR, r)
+        let x = this.x0 + deltaX
+        let y = this.y0 + deltaY
 
-        y = y * this.sticky * 3
+        x = Math.max(-this.a, x)
+        x = Math.min(this.a, x)
 
         y = Math.max(-this.maxY, y)
         y = Math.min(this.maxY, y)
 
-        this.v.r = r
-        this.v.y = y
-        this.v.w = 0
-        this.v.t = 0
+        this.x = x
+        this.y = y
 
         this.draw()
     }
@@ -237,93 +249,83 @@ class IKun {
     }
 
     draw = () => {
-        const { r, y } = this.v
-        const x = r * 5
-        this.image.style.transform = `rotate(${r}deg) translateX(${x}px) translateY(${y}px)`
+        const { a, b, x } = this
+
+        const rx = x
+        const ry =  Math.sqrt((1 - Math.pow(x, 2) / Math.pow(a, 2)) * Math.pow(b, 2))
+        const rotate = Math.atan(rx / ry) / Math.PI * 180
+
+        const y = ry - b
+
+        this.image.style.transform = `rotate(${rotate}deg) translateX(${x}px) translateY(${y}px)`
 
         const {context, width, height} = this
 
-        context.clearRect(0, 0, width, height)
-        context.save()
+        // context.clearRect(0, 0, width, height)
+        // context.save()
     
-        context.strokeStyle = '#182562'
-        context.lineWidth = 10
+        // context.strokeStyle = '#182562'
+        // context.lineWidth = 10
     
-        context.beginPath()
-        context.translate(
-            width / 2 ,
-            640 // height - 160
-        )
-        context.moveTo(
-            0,
-            200
-        )
+        // context.beginPath()
+        // context.translate(
+        //     width / 2 ,
+        //     640 // height - 160
+        // )
+        // context.moveTo(
+        //     0,
+        //     200
+        // )
     
-        const cx = 0
-        const cy = -100
+        // const cx = 0
+        // const cy = -100
     
-        const n = rotatePoint(
-            cx,
-            cy,
-            r,
-            -y,
-            r
-        )
+        // const n = rotatePoint(
+        //     cx,
+        //     cy,
+        //     r,
+        //     -y,
+        //     r
+        // )
     
-        const nx = n.x
-        const ny = -n.y - 100
+        // const nx = n.x
+        // const ny = -n.y - 100
         
-        context.quadraticCurveTo(
-            0,
-            75,
-            nx,
-            ny
-        )
+        // context.quadraticCurveTo(
+        //     0,
+        //     75,
+        //     nx,
+        //     ny
+        // )
 
-        context.stroke()
-        context.restore()
+        // context.stroke()
+        // context.restore()
     }
 
-    run = () => {
+    loop = () => {
         if(this.initiated) {
             return
         }
 
+        const fs = -this.stiffness * this.x
+        let fd = this.damping * (this.velocity)
+        const acceleration = (fs - fd) / this.mass
+
         const now = Date.now()
+        const interval = now - this.time
+        this.time = now
 
-        let i = this.inertia
-        const delta = this.last ? now - this.last : 16
-        if(delta < 16){ // 如果单帧间隔超过 16ms 那就躺平不处理
-            i = i / FRAME * delta
-        }
-        this.last = now
-        
-        let { r, y, t, w, d } = this.v
-
-        w = w - r * 2 - this.rotate
-        r = r + w * i * 1.2
-        this.v.w = w * d
-        this.v.r = r
-
-        t = t - y * 2
-        y = y + t * i * 2
-        this.v.t = t * d
-        this.v.y = y
-
-        // 小于一定动作时停止重绘
-        if(
-            Math.max(
-                Math.abs(this.v.w),
-                Math.abs(this.v.r),
-                Math.abs(this.v.t),
-                Math.abs(this.v.y)
-            ) < 0.1
-        ) {
-            return
-        }
+        this.velocity += acceleration * interval
+        this.x += this.velocity * interval
 
         this.draw()
-        requestAnimationFrame(this.run)
+        requestAnimationFrame(this.loop)
+    }
+
+    run = () => {
+        this.time = Date.now()
+        this.velocity = 0
+        requestAnimationFrame(this.loop)
     }
 }
 
