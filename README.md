@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://haiyong.site/img/favicon.png" height="260px">
+    <img src="https://haiyong.site/img/favicon.png" height="60px">
 </p>
 
 <p align="center">请 Star 🌟 这个项目来表达你对坤坤的喜爱 ❤️ 和支持。</p>
