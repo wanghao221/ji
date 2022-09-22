@@ -55,13 +55,13 @@ const Home: NextPage = () => {
       <div className={styles.container}>
         <div className={styles.stage} ref={containerRef} />
       </div>
-      	<footer class="page-footer">
+    </>
+	        	<footer class="page-footer">
 	  <span>更多游戏👉</span>
 	  <a href="https://haiyong.site/moyu" target="_blank">
 		<img class="touxiang"  src="https://haiyong.site/img/favicon.png" alt="George Martsoukos logo">
 	  </a>
 	</footer>
-    </>
   )
 }
 
